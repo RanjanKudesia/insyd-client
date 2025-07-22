@@ -35,6 +35,7 @@ const DashboardPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null) // NEW: Track which post is being deleted
 
   // API configuration
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
@@ -225,6 +226,66 @@ const DashboardPage = () => {
     }
   }
 
+  // NEW: Handle delete post
+  const handleDeletePost = async (post: Post) => {
+    if (!user || post.authorId !== user.userId) return
+
+    // Confirmation dialog
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${post.title}"? This action cannot be undone.`
+    )
+    
+    if (!confirmDelete) return
+
+    setDeletingPostId(post.postId)
+
+    // Store original posts for rollback
+    const originalPosts = [...posts]
+
+    try {
+      // Optimistic update - remove post immediately
+      setPosts(prevPosts => prevPosts.filter(p => p.postId !== post.postId))
+
+      // API call to delete post
+      const response = await axios.delete(`${API_BASE_URL}/api/v1/posts/${post.postId}`, {
+        timeout: 10000,
+      })
+
+      if (response.data.success) {
+        console.log('✅ Post deleted successfully')
+        // Post already removed optimistically, no need to update state again
+      } else {
+        throw new Error('Failed to delete post')
+      }
+    } catch (error: unknown) {
+      console.error('❌ Error deleting post:', error)
+      
+      // Revert optimistic update on error
+      setPosts(originalPosts)
+      
+      // Show error message
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 403) {
+          alert('You are not authorized to delete this post.')
+        } else if (error.response?.status === 404) {
+          alert('Post not found. It may have already been deleted.')
+        } else if (error.response?.data?.error) {
+          alert(`Error: ${error.response.data.error}`)
+        } else if (error.code === 'ECONNABORTED') {
+          alert('Request timeout. Please try again.')
+        } else {
+          alert('Network error. Please try again.')
+        }
+      } else if (error instanceof Error) {
+        alert(`Error: ${error.message}`)
+      } else {
+        alert('Something went wrong. Please try again.')
+      }
+    } finally {
+      setDeletingPostId(null)
+    }
+  }
+
   // Loading state
   if (!isAuthenticated || !user) {
     return (
@@ -369,6 +430,7 @@ const DashboardPage = () => {
                       {/* Post Actions */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
+                          {/* Like Button */}
                           <button
                             onClick={() => handleLikePost(post)}
                             disabled={post.authorId === user.userId}
@@ -389,10 +451,37 @@ const DashboardPage = () => {
                             </svg>
                             <span className="font-medium">{post.likeCount}</span>
                           </button>
+
+                          {/* Delete Button - Only show for user's own posts */}
                           {post.authorId === user.userId && (
-                            <span className="text-xs text-gray-500">You can&apos;t like your own post</span>
+                            <button
+                              onClick={() => handleDeletePost(post)}
+                              disabled={deletingPostId === post.postId}
+                              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition duration-200 transform hover:scale-105 ${
+                                deletingPostId === post.postId
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-red-100 text-red-600 hover:bg-red-200'
+                              }`}
+                              title="Delete post"
+                            >
+                              {deletingPostId === post.postId ? (
+                                <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              )}
+                              <span className="font-medium text-sm">
+                                {deletingPostId === post.postId ? 'Deleting...' : 'Delete'}
+                              </span>
+                            </button>
                           )}
                         </div>
+                        
+                        {/* Help text for own posts */}
+                        {post.authorId === user.userId && (
+                          <span className="text-xs text-gray-500">Your post</span>
+                        )}
                       </div>
                     </div>
                   </div>
