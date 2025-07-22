@@ -4,6 +4,7 @@ import React, { useState, ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { useAuth } from '@/app/_context/AuthContext'
+import Image from 'next/image'
 
 interface FormData {
   email: string
@@ -131,10 +132,8 @@ const LoginPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-            <span className="text-2xl text-white font-bold">🏗️</span>
-          </div>
+        <div className="text-center flex flex-col items-center mb-8">
+          <Image src='/logo.svg' width={50} height={50} alt='logo' />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome Back
           </h1>

@@ -4,6 +4,8 @@ import React, { useState, ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { useAuth } from '@/app/_context/AuthContext';
+import Image from 'next/image';
+
 
 interface FormData {
   name: string
@@ -19,13 +21,13 @@ interface FormErrors {
 const SignupPage = () => {
   const router = useRouter()
   const { login } = useAuth()
-  
+
   // Form state
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
   })
-  
+
   const [errors, setErrors] = useState<FormErrors>({})
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [successMessage, setSuccessMessage] = useState<string>('')
@@ -65,7 +67,7 @@ const SignupPage = () => {
       ...prev,
       [name]: value
     }))
-    
+
     // Clear field error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
@@ -78,11 +80,11 @@ const SignupPage = () => {
   // Handle form submission
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
+
     // Clear previous messages
     setErrors({})
     setSuccessMessage('')
-    
+
     // Validate form
     if (!validateForm()) {
       return
@@ -92,59 +94,59 @@ const SignupPage = () => {
 
     try {
       console.log('🚀 Creating user with data:', formData)
-      
+
       const response = await axios.post(`${API_BASE_URL}/api/v1/users`, formData, {
         headers: {
           'Content-Type': 'application/json',
         },
         timeout: 10000,
       })
-      
+
       if (response.data.success && response.data.data) {
         console.log('✅ User created successfully:', response.data.data)
-        
+
         // Update auth state
         login(response.data.data)
-        
+
         setSuccessMessage('Account created successfully! Redirecting...')
-        
+
         // Redirect to dashboard after 2 seconds
-          router.replace('/dashboard')
-        
+        router.replace('/dashboard')
+
       } else {
         throw new Error(response.data.error || 'Signup failed')
       }
-      
+
     } catch (error: unknown) {
-    console.error('❌ Login error:', error)
-    
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        setErrors({ general: 'No account found with this email address. Please sign up first.' })
-      } else if (error.response?.data?.error) {
-        setErrors({ general: error.response.data.error })
-      } else if (error.code === 'ECONNABORTED') {
-        setErrors({ general: 'Request timeout. Please try again.' })
+      console.error('❌ Login error:', error)
+
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          setErrors({ general: 'No account found with this email address. Please sign up first.' })
+        } else if (error.response?.data?.error) {
+          setErrors({ general: error.response.data.error })
+        } else if (error.code === 'ECONNABORTED') {
+          setErrors({ general: 'Request timeout. Please try again.' })
+        } else {
+          setErrors({ general: 'Network error. Please try again.' })
+        }
+      } else if (error instanceof Error) {
+        setErrors({ general: error.message || 'Something went wrong. Please try again.' })
       } else {
-        setErrors({ general: 'Network error. Please try again.' })
+        setErrors({ general: 'Something went wrong. Please try again.' })
       }
-    } else if (error instanceof Error) {
-      setErrors({ general: error.message || 'Something went wrong. Please try again.' })
-    } else {
-      setErrors({ general: 'Something went wrong. Please try again.' })
+    } finally {
+      setIsLoading(false)
     }
-  } finally {
-    setIsLoading(false)
   }
-}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-            <span className="text-2xl text-white font-bold">🏗️</span>
+          <div className="mx-auto h-16 w-16 rounded-full flex items-center justify-center mb-4">
+            <Image src='/logo.svg' width={50} height={50} alt='logo' />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Join Insyd
@@ -244,8 +246,8 @@ const SignupPage = () => {
                 transition duration-200 ease-in-out
                 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                 flex items-center justify-center gap-2
-                ${isLoading 
-                  ? 'bg-blue-400 cursor-not-allowed' 
+                ${isLoading
+                  ? 'bg-blue-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg'
                 }
                 text-white
@@ -253,16 +255,16 @@ const SignupPage = () => {
             >
               {isLoading && (
                 <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle 
-                    cx="12" 
-                    cy="12" 
-                    r="10" 
-                    stroke="currentColor" 
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
                     strokeWidth="4"
                     className="opacity-25"
                   />
-                  <path 
-                    fill="currentColor" 
+                  <path
+                    fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     className="opacity-75"
                   />
@@ -276,7 +278,7 @@ const SignupPage = () => {
           <div className="mt-6 text-center">
             <p className="text-gray-600 text-sm">
               Already have an account?{' '}
-              <button 
+              <button
                 onClick={() => router.push('/auth/login')}
                 className="text-blue-600 font-semibold hover:text-blue-700 transition duration-200"
                 type="button"
